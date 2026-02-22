@@ -1,10 +1,12 @@
 package com.example.wjuegosapp
 
 import android.os.Bundle
+import androidx.compose.animation.animateContentSize
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -14,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -22,14 +25,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            AppNavigation()
+            MaterialTheme(colorScheme = darkColorScheme()) {
+                AppNavigation()
+            }
         }
     }
 }
 
 @Composable
 fun AppNavigation() {
-
     var currentScreen by remember { mutableIntStateOf(0) }
 
     Surface(
@@ -52,6 +56,47 @@ fun AppNavigation() {
 }
 
 @Composable
+fun GameScreenLayout(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                content()
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+            Text("Volver al Menú Principal")
+        }
+    }
+}
+
+@Composable
 fun MenuScreen(
     onNavigateToLoteria: () -> Unit,
     onNavigateToAdivina: () -> Unit,
@@ -61,67 +106,57 @@ fun MenuScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(32.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "MENÚ DE JUEGOS", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(32.dp))
+        Text("ARCADE", fontSize = 40.sp, fontWeight = FontWeight.Black)
+        Text("Selecciona un juego", color = Color.Gray)
+        Spacer(modifier = Modifier.height(40.dp))
 
-        Button(onClick = onNavigateToLoteria, modifier = Modifier.fillMaxWidth()) {
-            Text("Jugar Lotería")
-        }
-        Spacer(modifier = Modifier.height(16.dp))
+        MenuButton("Jugar Lotería", MaterialTheme.colorScheme.primary, onNavigateToLoteria)
+        MenuButton("Adivina el Número", MaterialTheme.colorScheme.secondary, onNavigateToAdivina)
+        MenuButton("Par o Impar", MaterialTheme.colorScheme.tertiary, onNavigateToParImpar)
+        MenuButton("Blackjack (21)", Color(0xFF2E7D32), onNavigateToBlackjack)
+    }
+}
 
-        Button(onClick = onNavigateToAdivina, modifier = Modifier.fillMaxWidth()) {
-            Text("Adivina el Número")
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = onNavigateToParImpar, modifier = Modifier.fillMaxWidth()) {
-            Text("Par o Impar")
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = onNavigateToBlackjack,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B5E20))
-        ) {
-            Text("Blackjack (21)")
-        }
+@Composable
+fun MenuButton(text: String, color: Color, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .height(60.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = color)
+    ) {
+        Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 fun LoteriaScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
-    var numeros by remember { mutableStateOf("Presiona Jugar") }
+    var numeros by remember { mutableStateOf("Toca el botón para tu suerte") }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("LOTERÍA", style = MaterialTheme.typography.headlineSmall)
+    GameScreenLayout(title = "LOTERÍA", onBack = onBack) {
+        Text(numeros, fontSize = 20.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.Medium)
         Spacer(modifier = Modifier.height(24.dp))
-        Text(text = numeros, style = MaterialTheme.typography.bodyLarge)
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = {
-            scope.launch {
-                try {
-                    val lista = RetrofitClient.api.obtenerLoteria()
-                    numeros = "Números ganadores:\n$lista"
-                } catch (e: Exception) {
-                    numeros = "Error: ${e.message}"
+        Button(
+            onClick = {
+                scope.launch {
+                    try {
+                        val lista = RetrofitClient.api.obtenerLoteria()
+                        numeros = "Tus números ganadores:\n\n$lista"
+                    } catch (e: Exception) { numeros = "Error de conexión" }
                 }
-            }
-        }) {
-            Text("Generar Números")
-        }
-        Spacer(modifier = Modifier.height(32.dp))
-        OutlinedButton(onClick = onBack) { Text("Volver") }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) { Text("Generar Números", fontSize = 16.sp) }
     }
 }
 
@@ -129,39 +164,40 @@ fun LoteriaScreen(onBack: () -> Unit) {
 fun AdivinaScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var numeroUsuario by remember { mutableStateOf("") }
-    var mensaje by remember { mutableStateOf("Ingresa un número") }
+    var mensaje by remember { mutableStateOf("Adivina un número del 1 al 20") }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("ADIVINA EL NÚMERO", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(16.dp))
-        TextField(
+    GameScreenLayout(title = "ADIVINA", onBack = onBack) {
+        OutlinedTextField(
             value = numeroUsuario,
             onValueChange = { numeroUsuario = it },
             label = { Text("Tu número") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = {
-            scope.launch {
-                try {
-                    val num = numeroUsuario.toIntOrNull()
-                    if (num != null) {
-                        val respuesta = RetrofitClient.api.adivinaNumero(num)
-                        mensaje = respuesta
-                    }
-                } catch (e: Exception) {
-                    mensaje = "Error conexión"
+        Button(
+            onClick = {
+                scope.launch {
+                    try {
+                        val num = numeroUsuario.toIntOrNull()
+                        if (num != null) {
+                            mensaje = RetrofitClient.api.adivinaNumero(num)
+                            numeroUsuario = ""
+                        }
+                    } catch (e: Exception) { mensaje = "Error de conexión" }
                 }
-            }
-        }) { Text("Probar") }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) { Text("Probar Suerte") }
         Spacer(modifier = Modifier.height(16.dp))
-        Text(text = mensaje)
-        Spacer(modifier = Modifier.height(32.dp))
-        OutlinedButton(onClick = onBack) { Text("Volver") }
+        Text(
+            mensaje,
+            fontSize = 18.sp,
+            textAlign = TextAlign.Center,
+            color = if (mensaje.contains("Ganaste")) Color(0xFF4CAF50) else Color.White
+        )
     }
 }
 
@@ -169,128 +205,101 @@ fun AdivinaScreen(onBack: () -> Unit) {
 fun ParImparScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var numeroUsuario by remember { mutableStateOf("") }
-    var resultado by remember { mutableStateOf("") }
+    var resultado by remember { mutableStateOf("Ingresa un número para evaluar") }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("PAR O IMPAR", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(16.dp))
-        TextField(
+    GameScreenLayout(title = "PAR / IMPAR", onBack = onBack) {
+        OutlinedTextField(
             value = numeroUsuario,
             onValueChange = { numeroUsuario = it },
             label = { Text("Número a verificar") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = {
-            scope.launch {
-                try {
-                    val num = numeroUsuario.toIntOrNull()
-                    if (num != null) {
-                        val respuesta = RetrofitClient.api.jugarParImpar(num)
-                        resultado = respuesta
-                    }
-                } catch (e: Exception) {
-                    resultado = "Error conexión"
+        Button(
+            onClick = {
+                scope.launch {
+                    try {
+                        val num = numeroUsuario.toIntOrNull()
+                        if (num != null) resultado = RetrofitClient.api.jugarParImpar(num)
+                    } catch (e: Exception) { resultado = "Error conexión" }
                 }
-            }
-        }) { Text("Verificar") }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) { Text("Verificar") }
         Spacer(modifier = Modifier.height(16.dp))
-        Text(text = resultado, style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(32.dp))
-        OutlinedButton(onClick = onBack) { Text("Volver") }
+        Text(resultado, fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 fun BlackjackScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
-
     var puntaje by remember { mutableIntStateOf(0) }
     var cartasTexto by remember { mutableStateOf("") }
     var mensajeFinal by remember { mutableStateOf("") }
     var juegoTerminado by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(" BLACKJACK 21 ", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-
-        Spacer(modifier = Modifier.height(30.dp))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Tus Cartas:", fontWeight = FontWeight.Bold)
-                Text(if (cartasTexto.isEmpty()) "Empieza a jugar..." else cartasTexto)
-                Spacer(modifier = Modifier.height(10.dp))
-                Text("Puntaje Total: $puntaje", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
+    GameScreenLayout(title = "♠️ BLACKJACK", onBack = onBack) {
+        Text("Tus Cartas:", color = Color.Gray)
+        Text(if (cartasTexto.isEmpty()) "Mesa limpia" else cartasTexto, fontSize = 18.sp, textAlign = TextAlign.Center)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Puntaje Total: $puntaje", fontSize = 28.sp, fontWeight = FontWeight.Black)
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (mensajeFinal.isNotEmpty()) {
             Text(
                 text = mensajeFinal,
-                style = MaterialTheme.typography.headlineSmall,
-                color = if (mensajeFinal.contains("GANASTE") || mensajeFinal.contains("Empate")) Color(0xFF2E7D32) else Color(0xFFC62828),
-                modifier = Modifier.padding(8.dp)
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = if (mensajeFinal.contains("GANASTE") || mensajeFinal.contains("Empate")) Color(0xFF4CAF50) else Color(0xFFF44336)
             )
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-
         if (!juegoTerminado) {
-            Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
-                Button(onClick = {
-                    scope.launch {
-                        try {
-                            val respuesta = RetrofitClient.api.pedirCarta()
-                            val partes = respuesta.split("|")
-                            val nombreCarta = partes[0]
-                            val valorCarta = partes[1].toInt()
-
-                            cartasTexto += "$nombreCarta\n"
-                            puntaje += valorCarta
-
-                            if (puntaje > 21) {
-                                mensajeFinal = "Te pasaste de 21! Pierdes."
-                                juegoTerminado = true
-                            }
-                        } catch (e: Exception) {
-                            mensajeFinal = "Error: Prende el backend."
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                val respuesta = RetrofitClient.api.pedirCarta()
+                                val partes = respuesta.split("|")
+                                cartasTexto += "${partes[0]}\n"
+                                puntaje += partes[1].toInt()
+                                if (puntaje > 21) {
+                                    mensajeFinal = "¡Te pasaste de 21! Pierdes."
+                                    juegoTerminado = true
+                                }
+                            } catch (e: Exception) { mensajeFinal = "Error de red" }
                         }
-                    }
-                }) {
-                    Text("Pedir Carta")
-                }
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Pedir") }
 
                 Button(
                     onClick = {
                         scope.launch {
                             try {
-                                val resultado = RetrofitClient.api.plantarse(puntaje)
-                                mensajeFinal = resultado
+                                mensajeFinal = RetrofitClient.api.plantarse(puntaje)
                                 juegoTerminado = true
-                            } catch (e: Exception) {
-                                mensajeFinal = "Error de conexión"
-                            }
+                            } catch (e: Exception) { mensajeFinal = "Error de red" }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
-                ) {
-                    Text("Plantarse")
-                }
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF9800),
+                        contentColor = Color.Black
+                    ),
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Plantarse") }
             }
         } else {
             Button(
@@ -300,13 +309,9 @@ fun BlackjackScreen(onBack: () -> Unit) {
                     mensajeFinal = ""
                     juegoTerminado = false
                 },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Jugar Otra Vez")
-            }
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) { Text("Jugar Otra Vez") }
         }
-
-        Spacer(modifier = Modifier.height(40.dp))
-        OutlinedButton(onClick = onBack) { Text("Volver al Menú") }
     }
 }
